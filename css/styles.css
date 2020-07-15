@@ -1,0 +1,50 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+.main {
+    display: flex;
+    flex-direction: row;
+}
+
+.side {
+    max-width: 100px;
+}
+
+#resume {
+    display: none;
+}
+
+.state-change {
+    text-align: center;
+    padding: 10px;
+    background: azure;
+    border-radius: 3px;
+    display: inline-block;
+    width: 90px;
+}
+
+.score {
+    background: beige;
+    color: black;
+    padding: 10px;
+    display: inline-block;
+    font-size: 15px;
+    width: 90px;
+    text-align: center;
+}
+
+#over {
+    background: #bd5656;
+    padding: 10px;
+    display: inline-block;
+    font-size: 15px;
+    width: 90px;
+    text-align: center;
+    color: white;
+}
+
+.score:before {
+    content: 'Wynik: ';
+}
