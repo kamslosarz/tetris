@@ -51,8 +51,9 @@
     content: 'Wynik: ';
 }
 
-#shape {
+#nextShape, #holdShape {
     border: 1px solid #e6e6e6;
+    margin: 3px 0;
 }
 
 @media only screen and (max-device-width: 481px) {
@@ -78,7 +79,7 @@
         display: none;
     }
 
-    #shape {
+    #nextShape, #holdShape {
         max-height: 100px;
         max-width: 100px;
     }

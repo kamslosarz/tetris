@@ -34,13 +34,16 @@ class Game extends EventListener {
     const gameCanvas = document.getElementById('game');
     gameCanvas.focus();
     this.gameMatrix = new Matrix(20, 10, gameCanvas);
-    const shapeCanvas = document.getElementById('shape');
-    this.shapeMatrix = new Matrix(4, 4, shapeCanvas);
+    const nextShapeCanvas = document.getElementById('nextShape');
+    this.nextShapeMatrix = new Matrix(4, 4, nextShapeCanvas);
+    const holdShapeCanvas = document.getElementById('holdShape');
+    this.holdShapeMatrix = new Matrix(4, 4, holdShapeCanvas);
     Game.state = Game.states.start;
   }
 
   play() {
-    this.shapeFeeder = new ShapeFeeder(this.gameMatrix, this.shapeMatrix);
+    this.shapeFeeder = new ShapeFeeder(this.gameMatrix, this.nextShapeMatrix,
+        this.holdShapeMatrix);
     const cycle = () => {
       if (Game.isStarted()) {
         this.shapeFeeder.startFeeding();
@@ -52,8 +55,8 @@ class Game extends EventListener {
       clearInterval(this.cycleInterval);
       this.gameMatrix.reset();
       this.gameMatrix.render();
-      this.shapeMatrix.reset();
-      this.shapeMatrix.render();
+      this.nextShapeMatrix.reset();
+      this.nextShapeMatrix.render();
       console.log(1);
       document.getElementById('over').style.display = 'block';
       document.getElementById('pause').style.display = 'none';
@@ -63,10 +66,10 @@ class Game extends EventListener {
       Game.score += score;
       document.getElementById('score').innerText = Game.score;
     });
-    Game.addEventListener('resume', (score) => {
+    Game.addEventListener('resume', () => {
       Game.state = Game.states.start;
     });
-    Game.addEventListener('pause', (score) => {
+    Game.addEventListener('pause', () => {
       Game.state = Game.states.pause;
     });
     this.attachListeners();
@@ -106,6 +109,9 @@ class Game extends EventListener {
         resume.style.display = 'inline-block';
       }
     });
+    KeyboardListener.addEventListener('KeyC', () => {
+      this.shapeFeeder.holdActualShape();
+    });
     KeyboardListener.addEventListener('Space', () => {
       if (Game.isStarted()) {
         this.shapeFeeder.moveShapeMaxDown();
@@ -126,11 +132,15 @@ class ShapeFeeder {
   #activeShape;
   #nextShape;
   #gameMatrix;
-  #shapeMatrix;
+  #nextShapeMatrix;
+  #holdShapeMatrix;
+  #shapeOnHold;
 
-  constructor(gameMatrix, shapeMatrix) {
+  constructor(gameMatrix, nextShapeMatrix, holdShapeMatrix) {
     this.#gameMatrix = gameMatrix;
-    this.#shapeMatrix = shapeMatrix;
+    this.#nextShapeMatrix = nextShapeMatrix;
+    this.#holdShapeMatrix = holdShapeMatrix;
+    this.#holdShapeMatrix.render();
     this.#assignNextShape();
   }
 
@@ -187,7 +197,7 @@ class ShapeFeeder {
         this.#gameMatrix.resetPoints(this.#activeShape.points);
         this.#gameMatrix.setPointsShape(points, this.#activeShape);
         this.#activeShape.points = points;
-        if(!this.checkIfEnd()){
+        if (!this.checkIfEnd()) {
           this.#gameMatrix.render();
           this.checkScore();
           this.putShape();
@@ -210,7 +220,7 @@ class ShapeFeeder {
       this.#gameMatrix.setPointsShape(nextPoints, this.#activeShape);
       this.#activeShape.points = nextPoints;
     } else {
-      if(!this.checkIfEnd()){
+      if (!this.checkIfEnd()) {
         this.checkScore();
         this.#activeShape = null;
         this.putShape();
@@ -252,16 +262,43 @@ class ShapeFeeder {
     this.#gameMatrix.render();
   }
 
+  holdActualShape() {
+    if (!this.#activeShape.wasHold) {
+      if (!this.#shapeOnHold) {
+        this.resetMatrix(this.#gameMatrix, this.#activeShape);
+        this.#shapeOnHold = this.#activeShape;
+        this.#shapeOnHold.wasHold = true;
+        this.#activeShape.reset();
+        this.#activeShape = this.#nextShape;
+        this.#assignNextShape();
+        this.#renderHoldShape();
+      } else {
+        this.resetMatrix(this.#gameMatrix, this.#activeShape);
+        this.#activeShape.reset();
+        const activeShape = this.#activeShape;
+        this.#activeShape = this.#shapeOnHold;
+        this.#shapeOnHold = activeShape;
+        this.#renderHoldShape();
+      }
+    }
+  }
+
+  resetMatrix(matrix, shape) {
+    for (const point of shape.points) {
+      const p = matrix.getPoint(point.h, point.w);
+      if (p) {
+        p.shape = null;
+      }
+    }
+    matrix.render();
+  }
+
   #assignNextShape = () => {
     const shapes = Object.keys(Shape.shapeTypes);
     const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
     this.#nextShape = new Shape(randomShape);
-    this.#shapeMatrix.reset();
-    for (const coordinate of this.#nextShape.coordinates) {
-      const point = this.#shapeMatrix.getPoint(coordinate[0], coordinate[1]);
-      point.shape = this.#nextShape;
-    }
-    this.#shapeMatrix.render();
+    this.#nextShapeMatrix.reset();
+    this.#renderNextShape();
   };
 
   #getLastMovePoints = () => {
@@ -325,6 +362,26 @@ class ShapeFeeder {
       }
     }
     return nextPoints;
+  };
+
+  #renderNextShape = () => {
+    this.#nextShapeMatrix.reset();
+    for (const coordinate of this.#nextShape.coordinates) {
+      const point = this.#nextShapeMatrix.getPoint(coordinate[0],
+          coordinate[1]);
+      point.shape = this.#nextShape;
+    }
+    this.#nextShapeMatrix.render();
+  };
+
+  #renderHoldShape = () => {
+    this.#holdShapeMatrix.reset();
+    for (const coordinate of this.#shapeOnHold.coordinates) {
+      const point = this.#holdShapeMatrix.getPoint(coordinate[0],
+          coordinate[1]);
+      point.shape = this.#shapeOnHold;
+    }
+    this.#holdShapeMatrix.render();
   };
 }
 
@@ -490,6 +547,7 @@ class Shape {
   color;
   points = [];
   position = 0;
+  wasHold = false;
 
   constructor(type, position = null) {
     this.type = Shape.shapeTypes[type];
@@ -530,6 +588,10 @@ class Shape {
     } else {
       return this.position + 1;
     }
+  }
+
+  reset() {
+    this.points = this.basePoints;
   }
 
   reverse() {
