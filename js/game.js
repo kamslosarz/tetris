@@ -49,11 +49,14 @@ class Game extends EventListener {
     this.cycleInterval = setInterval(cycle, 1000);
     cycle();
     Game.addEventListener('end', () => {
+      clearInterval(this.cycleInterval);
       this.gameMatrix.reset();
       this.gameMatrix.render();
+      this.shapeMatrix.reset();
+      this.shapeMatrix.render();
       document.getElementById('over').style.display = 'block';
       document.getElementById('pause').style.display = 'none';
-      clearInterval(this.cycleInterval);
+      Game.state = Game.states.end;
     });
     Game.addEventListener('addScore', (score) => {
       Game.score += score;
@@ -249,7 +252,7 @@ class ShapeFeeder {
     const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
     this.#nextShape = new Shape(randomShape);
     this.#shapeMatrix.reset();
-    for(const coordinate of this.#nextShape.coordinates){
+    for (const coordinate of this.#nextShape.coordinates) {
       const point = this.#shapeMatrix.getPoint(coordinate[0], coordinate[1]);
       point.shape = this.#nextShape;
     }
