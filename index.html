@@ -1,17 +1,19 @@
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" type="text/css" href="css/styles.css">
 </head>
 <body>
 <div class="main">
-    <canvas id="game" height="510px" width="260px"></canvas>
+    <canvas id="game" height="505px" width="255px"></canvas>
     <div class="side">
+        <canvas id="shape" height="100px" width="100px"></canvas>
         <div id="over" style="display: none">Gra skończona</div>
-        <div id="pause" class="state-change">&#9614;&#9614; Pauza (p)</div>
-        <div id="resume" class="state-change">&#x2794; Wznów (p)</div>
-        <div id="score" class="score">0</div>
+        <div id="pause" class="side-item state-change">&#9614;&#9614;<span> Pauza (p)</span></div>
+        <div id="resume" class="side-item state-change">&#x2794;<span> Wznów (p)</span></div>
+        <div id="score" class="side-item score">0</div>
     </div>
 </div>
 <script type="text/javascript" src="js/game.js"></script>
-<link rel="stylesheet" type="text/css" href="css/styles.css">
 </body>
 </html>

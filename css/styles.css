@@ -10,29 +10,31 @@
 
 .side {
     max-width: 100px;
+    display: flex;
+    flex-direction: column;
 }
 
 #resume {
     display: none;
 }
 
-.state-change {
+.side-item {
     text-align: center;
-    padding: 10px;
-    background: azure;
-    border-radius: 3px;
+    border: 1px solid #e6e6e6;
+    max-width: 100px;
+    font-size: 13px;
     display: inline-block;
-    width: 90px;
+    padding: 10px;
+    border-radius: 3px;
+    color: black;
+}
+
+.state-change {
+    background: azure;
 }
 
 .score {
     background: beige;
-    color: black;
-    padding: 10px;
-    display: inline-block;
-    font-size: 15px;
-    width: 90px;
-    text-align: center;
 }
 
 #over {
@@ -40,11 +42,44 @@
     padding: 10px;
     display: inline-block;
     font-size: 15px;
-    width: 90px;
+    max-width: 100px;
     text-align: center;
     color: white;
 }
 
 .score:before {
     content: 'Wynik: ';
+}
+
+#shape {
+    border: 1px solid #e6e6e6;
+}
+
+@media only screen and (max-device-width: 481px) {
+    #game {
+        max-width: 260px;
+        max-height: 510px;
+    }
+
+    .score:before {
+        content: '';
+    }
+
+    .score {
+        width: auto;
+    }
+
+    #pause {
+        width: auto;
+        padding: 10px 10px 10px 15px;
+    }
+
+    .state-change span {
+        display: none;
+    }
+
+    #shape {
+        max-height: 100px;
+        max-width: 100px;
+    }
 }

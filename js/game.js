@@ -31,22 +31,26 @@ class Game extends EventListener {
 
   constructor() {
     super();
-    this.matrix = new Matrix();
+    const gameCanvas = document.getElementById('game');
+    gameCanvas.focus();
+    this.gameMatrix = new Matrix(20, 10, gameCanvas);
+    const shapeCanvas = document.getElementById('shape');
+    this.shapeMatrix = new Matrix(4, 4, shapeCanvas);
     Game.state = Game.states.start;
   }
 
   play() {
-    this.shapeFeeder = new ShapeFeeder();
+    this.shapeFeeder = new ShapeFeeder(this.gameMatrix, this.shapeMatrix);
     const cycle = () => {
       if (Game.isStarted()) {
-        this.shapeFeeder.startFeeding(this.matrix);
+        this.shapeFeeder.startFeeding();
       }
     };
     this.cycleInterval = setInterval(cycle, 1000);
     cycle();
     Game.addEventListener('end', () => {
-      this.matrix.reset();
-      this.matrix.render();
+      this.gameMatrix.reset();
+      this.gameMatrix.render();
       document.getElementById('over').style.display = 'block';
       document.getElementById('pause').style.display = 'none';
       clearInterval(this.cycleInterval);
@@ -67,22 +71,22 @@ class Game extends EventListener {
   attachListeners() {
     KeyboardListener.addEventListener('ArrowUp', async () => {
       if (Game.isStarted()) {
-        this.shapeFeeder.reverseShape(this.matrix);
+        this.shapeFeeder.reverseShape();
       }
     });
     KeyboardListener.addEventListener('ArrowLeft', () => {
       if (Game.isStarted()) {
-        this.shapeFeeder.moveShapeSide('left', this.matrix);
+        this.shapeFeeder.moveShapeSide('left');
       }
     });
     KeyboardListener.addEventListener('ArrowRight', () => {
       if (Game.isStarted()) {
-        this.shapeFeeder.moveShapeSide('right', this.matrix);
+        this.shapeFeeder.moveShapeSide('right');
       }
     });
     KeyboardListener.addEventListener('ArrowDown', () => {
       if (Game.isStarted()) {
-        this.shapeFeeder.moveShapeDown(this.matrix);
+        this.shapeFeeder.moveShapeDown();
       }
     });
     KeyboardListener.addEventListener('KeyP', () => {
@@ -100,7 +104,7 @@ class Game extends EventListener {
     });
     KeyboardListener.addEventListener('Space', () => {
       if (Game.isStarted()) {
-        this.shapeFeeder.moveShapeMaxDown(this.matrix);
+        this.shapeFeeder.moveShapeMaxDown();
       }
     });
   }
@@ -116,8 +120,17 @@ class Game extends EventListener {
 
 class ShapeFeeder {
   #activeShape;
+  #nextShape;
+  #gameMatrix;
+  #shapeMatrix;
 
-  reverseShape(matrix) {
+  constructor(gameMatrix, shapeMatrix) {
+    this.#gameMatrix = gameMatrix;
+    this.#shapeMatrix = shapeMatrix;
+    this.#assignNextShape();
+  }
+
+  reverseShape() {
     if (this.#activeShape) {
       let points = [];
       const currentPoints = this.#activeShape.points;
@@ -126,8 +139,8 @@ class ShapeFeeder {
       const currentW = currentPoints.map((p) => p.w).sort()[0];
       const maxW = coordinates.map((c) => c[1]).sort().reverse()[0];
       let wCorrection = 0;
-      if ((maxW + currentW) > matrix.width) {
-        wCorrection = (maxW + currentW) - matrix.width;
+      if ((maxW + currentW) > this.#gameMatrix.width) {
+        wCorrection = (maxW + currentW) - this.#gameMatrix.width;
       }
       for (let coordinate of coordinates) {
         const h = coordinate[0] - (3 - currentH);
@@ -135,84 +148,83 @@ class ShapeFeeder {
         if (h < 0) {
           points.push(new Point(h, w));
         } else {
-          let p = matrix.getPoint(h, w);
+          let p = this.#gameMatrix.getPoint(h, w);
           if (p && (!p.shape || this.#activeShape.equals(p.shape))) {
             points.push(p);
           }
         }
       }
       if (points.length === 4) {
-        matrix.resetPoints(this.#activeShape.points);
-        matrix.setPointsShape(points, this.#activeShape);
+        this.#gameMatrix.resetPoints(this.#activeShape.points);
+        this.#gameMatrix.setPointsShape(points, this.#activeShape);
         this.#activeShape.points = points;
         this.#activeShape.reverse();
-        matrix.render();
+        this.#gameMatrix.render();
       }
     }
   }
 
-  moveShapeSide(side, matrix) {
+  moveShapeSide(side) {
     if (this.#activeShape) {
-      const nextPoints = this.#getSideMovePoints(side, matrix);
+      const nextPoints = this.#getSideMovePoints(side, this.#gameMatrix);
       if (nextPoints.length === 4) {
-        matrix.resetPoints(this.#activeShape.points);
-        matrix.setPointsShape(nextPoints, this.#activeShape);
+        this.#gameMatrix.resetPoints(this.#activeShape.points);
+        this.#gameMatrix.setPointsShape(nextPoints, this.#activeShape);
         this.#activeShape.points = nextPoints;
-        matrix.render();
+        this.#gameMatrix.render();
       }
     }
   }
 
-  moveShapeMaxDown(matrix) {
+  moveShapeMaxDown() {
     if (this.#activeShape) {
-      const points = this.#getLastMovePoints(matrix);
+      const points = this.#getLastMovePoints(this.#gameMatrix);
       if (points.length === 4) {
-        matrix.resetPoints(this.#activeShape.points);
-        matrix.setPointsShape(points, this.#activeShape);
+        this.#gameMatrix.resetPoints(this.#activeShape.points);
+        this.#gameMatrix.setPointsShape(points, this.#activeShape);
         this.#activeShape.points = points;
         this.checkIfEnd();
-        matrix.render();
-        this.checkScore(matrix);
+        this.#gameMatrix.render();
+        this.checkScore();
         this.putShape();
       }
     }
   }
 
-  moveShapeDown(matrix) {
+  moveShapeDown() {
     if (this.#activeShape) {
-      this.moveShape(matrix);
-      matrix.render();
+      this.moveShape();
+      this.#gameMatrix.render();
     }
   }
 
-  moveShape(matrix) {
-    const nextPoints = this.#getNextMovePoints(matrix);
+  moveShape() {
+    const nextPoints = this.#getNextMovePoints();
     if (nextPoints.length === 4) {
-      matrix.resetPoints(this.#activeShape.points);
-      matrix.setPointsShape(nextPoints, this.#activeShape);
+      this.#gameMatrix.resetPoints(this.#activeShape.points);
+      this.#gameMatrix.setPointsShape(nextPoints, this.#activeShape);
       this.#activeShape.points = nextPoints;
     } else {
       this.checkIfEnd();
-      this.checkScore(matrix);
+      this.checkScore();
       this.#activeShape = null;
       this.putShape();
     }
   }
 
-  checkScore(matrix) {
-    const fullLines = matrix.getFullLines();
+  checkScore() {
+    const fullLines = this.#gameMatrix.getFullLines();
     if (fullLines.length) {
       Game.dispatchEvent('addScore',
           fullLines.length * (10 + fullLines.length - 1));
-      matrix.scoreAquired(fullLines);
+      this.#gameMatrix.scoreAquired(fullLines);
     }
-    matrix.render();
+    this.#gameMatrix.render();
   }
 
   putShape() {
-    const shapes = Object.keys(Shape.shapeTypes);
-    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-    this.#activeShape = new Shape(randomShape);
+    this.#activeShape = this.#nextShape;
+    this.#assignNextShape();
   }
 
   checkIfEnd() {
@@ -223,23 +235,35 @@ class ShapeFeeder {
     }
   }
 
-  startFeeding(matrix) {
+  startFeeding() {
     if (this.#activeShape) {
-      this.moveShape(matrix);
+      this.moveShape();
     } else {
       this.putShape();
     }
-    matrix.render();
+    this.#gameMatrix.render();
   }
 
-  #getLastMovePoints = (matrix) => {
+  #assignNextShape = () => {
+    const shapes = Object.keys(Shape.shapeTypes);
+    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+    this.#nextShape = new Shape(randomShape);
+    this.#shapeMatrix.reset();
+    for(const coordinate of this.#nextShape.coordinates){
+      const point = this.#shapeMatrix.getPoint(coordinate[0], coordinate[1]);
+      point.shape = this.#nextShape;
+    }
+    this.#shapeMatrix.render();
+  };
+
+  #getLastMovePoints = () => {
     let points = this.#activeShape.points;
     do {
       let nextPoints = [];
       for (let point of points) {
         const h = point.h + 1;
         if (h >= 0) {
-          let nextPoint = matrix.getPoint(h, point.w);
+          let nextPoint = this.#gameMatrix.getPoint(h, point.w);
           if (nextPoint) {
             if (!nextPoint.shape || this.#activeShape.equals(nextPoint.shape)) {
               nextPoints.push(nextPoint);
@@ -259,7 +283,7 @@ class ShapeFeeder {
     return points;
   };
 
-  #getSideMovePoints = (side, matrix) => {
+  #getSideMovePoints = (side) => {
     let nextPoints = [];
     const points = this.#activeShape.points;
     for (let point of points) {
@@ -267,7 +291,7 @@ class ShapeFeeder {
       if (point.h < 0) {
         nextPoints.push(new Point(point.h, w));
       } else {
-        let nextPoint = matrix.getPoint(point.h, w);
+        let nextPoint = this.#gameMatrix.getPoint(point.h, w);
         if (nextPoint) {
           if (!nextPoint.shape || this.#activeShape.equals(nextPoint.shape)) {
             nextPoints.push(nextPoint);
@@ -278,13 +302,13 @@ class ShapeFeeder {
     return nextPoints;
   };
 
-  #getNextMovePoints = (matrix) => {
+  #getNextMovePoints = () => {
     let nextPoints = [];
     for (let point of this.#activeShape.points) {
       if (point.isOutOfMatrix() && (point.h + 1) < 0) {
         nextPoints.push(new Point(point.h + 1, point.w));
       } else {
-        let nextPoint = matrix.getPoint(point.h + 1, point.w);
+        let nextPoint = this.#gameMatrix.getPoint(point.h + 1, point.w);
         if (nextPoint) {
           if (!nextPoint.shape || this.#activeShape.equals(nextPoint.shape)) {
             nextPoints.push(nextPoint);
@@ -297,8 +321,8 @@ class ShapeFeeder {
 }
 
 class Matrix {
-  #height = 20;
-  #width = 10;
+  #height;
+  #width;
   #context;
   static #shapeSize = 25;
   matrix = [];
@@ -307,10 +331,10 @@ class Matrix {
     return this.#width - 1;
   }
 
-  constructor() {
+  constructor(height, width, canvas) {
+    this.#height = height;
+    this.#width = width;
     this.reset();
-    const canvas = document.getElementById('game');
-    canvas.focus();
     this.#context = canvas.getContext('2d');
     this.#context.beginPath();
   }
@@ -362,7 +386,6 @@ class Matrix {
   }
 
   render() {
-
     for (let point of this.matrix) {
       let w = point.w * Matrix.#shapeSize;
       let h = point.h * Matrix.#shapeSize;
