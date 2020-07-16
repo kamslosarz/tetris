@@ -54,6 +54,7 @@ class Game extends EventListener {
       this.gameMatrix.render();
       this.shapeMatrix.reset();
       this.shapeMatrix.render();
+      console.log(1);
       document.getElementById('over').style.display = 'block';
       document.getElementById('pause').style.display = 'none';
       Game.state = Game.states.end;
@@ -186,10 +187,11 @@ class ShapeFeeder {
         this.#gameMatrix.resetPoints(this.#activeShape.points);
         this.#gameMatrix.setPointsShape(points, this.#activeShape);
         this.#activeShape.points = points;
-        this.checkIfEnd();
-        this.#gameMatrix.render();
-        this.checkScore();
-        this.putShape();
+        if(!this.checkIfEnd()){
+          this.#gameMatrix.render();
+          this.checkScore();
+          this.putShape();
+        }
       }
     }
   }
@@ -208,10 +210,11 @@ class ShapeFeeder {
       this.#gameMatrix.setPointsShape(nextPoints, this.#activeShape);
       this.#activeShape.points = nextPoints;
     } else {
-      this.checkIfEnd();
-      this.checkScore();
-      this.#activeShape = null;
-      this.putShape();
+      if(!this.checkIfEnd()){
+        this.checkScore();
+        this.#activeShape = null;
+        this.putShape();
+      }
     }
   }
 
@@ -234,8 +237,10 @@ class ShapeFeeder {
     for (let point of this.#activeShape.points) {
       if (point.h < 0) {
         Game.dispatchEvent('end');
+        return true;
       }
     }
+    return false;
   }
 
   startFeeding() {
