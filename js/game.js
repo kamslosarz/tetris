@@ -57,7 +57,8 @@ class Game extends EventListener {
       this.gameMatrix.render();
       this.nextShapeMatrix.reset();
       this.nextShapeMatrix.render();
-      console.log(1);
+      this.holdShapeMatrix.reset();
+      this.holdShapeMatrix.render();
       document.getElementById('over').style.display = 'block';
       document.getElementById('pause').style.display = 'none';
       Game.state = Game.states.end;
@@ -270,6 +271,7 @@ class ShapeFeeder {
         this.#shapeOnHold.wasHold = true;
         this.#activeShape.reset();
         this.#activeShape = this.#nextShape;
+        this.#activeShape.wasHold = true;
         this.#assignNextShape();
         this.#renderHoldShape();
       } else {
@@ -278,6 +280,8 @@ class ShapeFeeder {
         const activeShape = this.#activeShape;
         this.#activeShape = this.#shapeOnHold;
         this.#shapeOnHold = activeShape;
+        this.#shapeOnHold.wasHold = true;
+        this.#activeShape.wasHold = true;
         this.#renderHoldShape();
       }
     }
@@ -332,7 +336,10 @@ class ShapeFeeder {
     let nextPoints = [];
     const points = this.#activeShape.points;
     for (let point of points) {
-      const w = (side === 'left' ? point.w - 1 : point.w + 1);
+      let w = (side === 'left' ? point.w - 1 : point.w + 1);
+      if(w < 0 || w > this.#gameMatrix.width){
+        continue;
+      }
       if (point.h < 0) {
         nextPoints.push(new Point(point.h, w));
       } else {
@@ -344,7 +351,7 @@ class ShapeFeeder {
         }
       }
     }
-    return nextPoints;
+    return nextPoints.length === 4 ? nextPoints : points;
   };
 
   #getNextMovePoints = () => {
