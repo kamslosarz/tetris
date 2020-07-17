@@ -337,7 +337,7 @@ class ShapeFeeder {
     const points = this.#activeShape.points;
     for (let point of points) {
       let w = (side === 'left' ? point.w - 1 : point.w + 1);
-      if(w < 0 || w > this.#gameMatrix.width){
+      if (w < 0 || w > this.#gameMatrix.width) {
         continue;
       }
       if (point.h < 0) {
