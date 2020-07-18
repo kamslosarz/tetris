@@ -11,11 +11,13 @@ class EventListener {
     }
   }
 
-  static addEventListener(type, callback) {
-    if (!EventListener.listeners.hasOwnProperty(type)) {
-      EventListener.listeners[type] = [];
+  static addEventListener(types, callback) {
+    for (const type of types.split(' ')) {
+      if (!EventListener.listeners.hasOwnProperty(type)) {
+        EventListener.listeners[type] = [];
+      }
+      EventListener.listeners[type].push(callback);
     }
-    EventListener.listeners[type].push(callback);
   }
 }
 
@@ -77,17 +79,17 @@ class Game extends EventListener {
   }
 
   attachListeners() {
-    KeyboardListener.addEventListener('ArrowUp', async () => {
+    KeyboardListener.addEventListener('ArrowUp SwipeUp', async () => {
       if (Game.isStarted()) {
         this.shapeFeeder.reverseShape();
       }
     });
-    KeyboardListener.addEventListener('ArrowLeft', () => {
+    KeyboardListener.addEventListener('ArrowLeft SwipeLeft', () => {
       if (Game.isStarted()) {
         this.shapeFeeder.moveShapeSide('left');
       }
     });
-    KeyboardListener.addEventListener('ArrowRight', () => {
+    KeyboardListener.addEventListener('ArrowRight SwipeRight', () => {
       if (Game.isStarted()) {
         this.shapeFeeder.moveShapeSide('right');
       }
@@ -113,10 +115,60 @@ class Game extends EventListener {
     KeyboardListener.addEventListener('KeyC', () => {
       this.shapeFeeder.holdActualShape();
     });
-    KeyboardListener.addEventListener('Space', () => {
+    KeyboardListener.addEventListener('Space touch SwipeDown', () => {
       if (Game.isStarted()) {
         this.shapeFeeder.moveShapeMaxDown();
       }
+    });
+    document.getElementById('arrow-up').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      KeyboardListener.dispatchEvent('ArrowUp');
+      return false;
+    });
+    document.getElementById('arrow-down').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      KeyboardListener.dispatchEvent('ArrowDown');
+      return false;
+    });
+    document.getElementById('arrow-left').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      KeyboardListener.dispatchEvent('ArrowLeft');
+      return false;
+    });
+    document.getElementById('arrow-right').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      KeyboardListener.dispatchEvent('ArrowRight');
+      return false;
+    });
+    document.getElementById('c').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      KeyboardListener.dispatchEvent('KeyC');
+      return false;
+    });
+    document.getElementById('space').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      KeyboardListener.dispatchEvent('Space');
+      return false;
+    });
+    document.getElementById('pause').addEventListener('click', () => {
+      const pause = document.getElementById('pause');
+      const resume = document.getElementById('resume');
+      Game.dispatchEvent('pause');
+      pause.style.display = 'none';
+      resume.style.display = 'inline-block';
+    });
+    document.getElementById('resume').addEventListener('click', () => {
+      const pause = document.getElementById('pause');
+      const resume = document.getElementById('resume');
+      Game.dispatchEvent('resume');
+      resume.style.display = 'none';
+      pause.style.display = 'inline-block';
     });
   }
 
@@ -399,16 +451,20 @@ class Matrix {
   static #shapeSize = 25;
   matrix = [];
 
-  get width() {
-    return this.#width - 1;
-  }
-
   constructor(height, width, canvas) {
     this.#height = height;
     this.#width = width;
     this.reset();
     this.#context = canvas.getContext('2d');
     this.#context.beginPath();
+  }
+
+  static get shapeSize() {
+    return Matrix.#shapeSize;
+  }
+
+  get width() {
+    return this.#width - 1;
   }
 
   scoreAquired(lines) {
@@ -622,10 +678,89 @@ class Shape {
   }
 }
 
-class KeyboardListener extends EventListener {}
+class KeyboardListener extends EventListener {
+  static keys() {
+    document.addEventListener('keydown', (e) => {
+      KeyboardListener.dispatchEvent(e.code, {});
+    });
+  }
 
-document.addEventListener('keydown', (e) => {
-  KeyboardListener.dispatchEvent(e.code, {});
-});
+  static dispatchMultiple(event, times, parameters) {
+    for (let i = 0; i < times; i++) {
+      KeyboardListener.dispatchEvent(event, parameters);
+    }
+  }
+
+  static touches() {
+    const dispatchMoveX = (moves, side) => {
+      if (side === 'left') {
+        KeyboardListener.dispatchMultiple('SwipeLeft', moves);
+      } else {
+        KeyboardListener.dispatchMultiple('SwipeRight', moves);
+      }
+    };
+    let touchEvent = {start: false, y: 0};
+    document.addEventListener('touchstart', (e) => {
+      if (e.changedTouches.length === 1) {
+        touchEvent.start = e.changedTouches[0];
+        touchEvent.y = e.changedTouches[0].clientY;
+      }
+    });
+    document.addEventListener('touchmove', (e) => {
+      if (!touchEvent.start || e.changedTouches.length !== 1) {
+        return false;
+      }
+      const touch = e.changedTouches[0];
+      let touchY = touch.clientY - touchEvent.y;
+      touchY = touchY < 0 ? -touchY : touchY;
+      let movedX = touchEvent.start.clientX - touch.clientX;
+      let side = 'left';
+      if (movedX < 0) {
+        side = 'right';
+        movedX = -movedX;
+      }
+      if (movedX > touchY) {
+        movedX = movedX * 1.3;
+        let moves = Math.floor(movedX / Matrix.shapeSize);
+        if (moves > 0) {
+          touchEvent.start = touch;
+          dispatchMoveX(moves, side);
+        }
+      }
+    });
+    document.addEventListener('touchend', (e) => {
+      if (!touchEvent.start || e.changedTouches.length !== 1) {
+        return false;
+      }
+      const touchEnd = e.changedTouches[0];
+      let movedY = touchEvent.start.clientY - touchEnd.clientY;
+      let movedX = touchEvent.start.clientX - touchEnd.clientX;
+      let side = 'up';
+      if (movedY < 0) {
+        side = 'down';
+      }
+      movedY = movedY < 0 ? -movedY : movedY;
+      movedX = movedX < 0 ? -movedX : movedX;
+      if (touchEnd.target.id === 'game' && !movedY && !movedX) {
+        KeyboardListener.dispatchEvent('touch');
+      } else {
+        if (movedY > movedX) {
+          if (side === 'up') {
+            KeyboardListener.dispatchEvent('SwipeUp');
+          } else {
+            KeyboardListener.dispatchEvent('SwipeDown');
+          }
+        }
+      }
+      touchEvent = {start: false};
+    });
+    document.addEventListener('touchcancel', (e) => {
+      touchEvent = {start: false};
+    });
+  }
+}
+
+KeyboardListener.keys();
+KeyboardListener.touches();
 const game = new Game();
 game.play();
